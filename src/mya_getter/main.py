@@ -113,17 +113,7 @@ def main():
                            help='Path to file containing PVs to sample, one PV per line.')
 
     subparsers.required = True
-
     args = parser.parse_args()
-
-    print(args)
-    # return
-
-    # start_time = datetime.now().strftime("%Y-%m-%d_%H%M%S")
-    # logging.basicConfig(level=logging.INFO,
-    #                     filename=f"{app_root}/log/{app_name}-{start_time}.log",
-    #                     filemode="w", format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
-    # logging.info("App starting")
 
     if args.cmd == 'config':
         cmd, queries = process_input_file(args.file)
@@ -153,7 +143,6 @@ def main():
     else:
         raise RuntimeError(f"Unsupported subcommand {args.cmd}")
 
-    # logging.info("App exiting normally")
     exit(0)
 
 

@@ -6,14 +6,14 @@ from datetime import datetime
 import pandas as pd
 import logging
 import subprocess
-from . import Query
+from ._mya import Query
 
 
 class MySamplerQuery(Query):
     """A class for containing the arguments needed by mySampler."""
 
     def __init__(self, start: datetime, interval: str, num_samples: int, pvlist: List[str]):
-        self.start = start.isoformat().replace("T", " ")
+        self.start = start.isoformat().replace("T", " ")[:-7]
         self.interval = interval
         self.num_samples = num_samples
         self.pvlist = pvlist
