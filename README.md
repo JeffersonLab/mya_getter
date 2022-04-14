@@ -6,7 +6,7 @@ A python wrapper package on MYA utilities.
 A light wrapper on common MYA utilities used at CEBAF.  These wrapped utilities are currently command line executables,
 however, this software offers easy parallelization through the use of process pools.
 
-Currently supported utilities are mySampler and myData.  These applications must be installed on your local system for
+Supported utilities are mySampler and myData.  These applications must be installed on your local system for
 this package to be of much use.
 
 ## Usage
@@ -46,7 +46,8 @@ query_1,2022-02-01_00:00:04,6.696
 ```
 
 ### Importable package
-You can install this repo directly into your code, then import it as mya_getter.
+You can install this repo directly into your code, then import it as mya_getter.  Use of a virtual environment is
+recommended.
 
 ```bash
 pip install git+https://github.com/JeffersonLab/mya_getter.git
@@ -59,6 +60,7 @@ query = mg.MySamplerQuery(start=(datetime.now() - timedelta(hours=1)), interval=
 df = mg.mySampler(query)
 print(df.head())
 ```
+
 This code would output the following.
 ```
                   Date  R123GMES
@@ -70,16 +72,25 @@ This code would output the following.
 
 ```
 
-Multiple queries can be run in parallel.  Here is an exmaple.
+Multiple queries can be run in parallel.  Here is an example.
 ```python
 import mya_getter as mg
 from datetime import datetime, timedelta
 start = datetime.now()
 pvlist = ['R121GMES', 'R123GMES']
-query1 = mg.MySamplerQuery(start=(start - timedelta(hours=1)), interval='1m', num_samples='60', pvlist=pvlist)
-query2 = mg.MySamplerQuery(start=(start - timedelta(hours=2)), interval='1m', num_samples='60', pvlist=pvlist)
+query1 = mg.MySamplerQuery(start=(start - timedelta(hours=1)), interval='1m', num_samples='3', pvlist=pvlist)
+query2 = mg.MySamplerQuery(start=(start - timedelta(hours=2)), interval='1m', num_samples='3', pvlist=pvlist)
 
 df = mg.do_parallel_queries(mg.mySampler, [query1, query2])
 print(df.head())
+```
 
+This will output the following result.
+```python
+   level_0                 Date  R121GMES  R123GMES
+0  query_0  2022-04-14_13:20:48         0         0
+1  query_0  2022-04-14_13:21:48         0         0
+2  query_0  2022-04-14_13:22:48         0         0
+3  query_1  2022-04-14_14:20:48         0         0
+4  query_1  2022-04-14_14:21:48         0         0
 ```
