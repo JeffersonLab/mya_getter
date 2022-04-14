@@ -25,13 +25,14 @@ def get_version(rel_path):
 
 setup(
     name='mya_getter',
-    version=get_version("mya_getter/__init__.py"),
+    version=get_version("src/mya_getter/__init__.py"),
     author='Adam Carpenter',
     author_email="adamc@jlab.org",
     description="A python wrapper on standard CEBAF MYA utilities",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    packages=find_packages(include=['mya_getter']),
+    packages=find_packages(where='src'),
+    package_dir={"": "src"},
     install_requires=[
         'tqdm',
         'pandas',
