@@ -7,7 +7,7 @@ from mya import do_parallel_queries
 from mya.mysampler import MySamplerQuery, mySampler
 from mya.mydata import MyDataQuery, myData
 
-app_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+app_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 app_name = os.path.basename(app_root)
 
 
