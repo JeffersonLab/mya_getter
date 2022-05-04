@@ -1,5 +1,5 @@
-from mya_getter.mya import *
-from mya_getter.trips import (
+from .mya import *
+from .trips import (
     collapse_overlapping_intervals,
     interval_overlap_any,
     get_down_state_intervals,
