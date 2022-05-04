@@ -13,7 +13,7 @@ class MySamplerQuery(Query):
     """A class for containing the arguments needed by mySampler."""
 
     def __init__(self, start: datetime, interval: str, num_samples: int, pvlist: List[str]):
-        self.start = start.isoformat().replace("T", " ")[:-7]
+        self.start = start.replace(microsecond=0).isoformat().replace("T", " ")
         self.interval = interval
         self.num_samples = num_samples
         self.pvlist = pvlist
