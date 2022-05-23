@@ -10,8 +10,8 @@ class MyDataQuery(Query):
     """A class for containing the arguments needed for a call to myData."""
 
     def __init__(self, begin: datetime, end: datetime, pvlist: List[str]):
-        self.begin = begin.isoformat().replace("T", " ")[:-7]
-        self.end = end.isoformat().replace("T", " ")[:-7]
+        self.begin = begin.replace(microsecond=0).isoformat().replace("T", " ")
+        self.end = end.replace(microsecond=0).isoformat().replace("T", " ")
         self.pv_list = pvlist
 
 
