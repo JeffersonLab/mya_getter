@@ -71,7 +71,6 @@ def get_down_state_intervals(df, on_state=1, off_state=0) -> Tuple[List[datetime
     s = None
     e = None
     for i in range(len(df)):
-
         # If MYA lost track of the PV, just skip the fault we might be in.
         if pd.isna(df.iloc[i, 1]):
             s = None
@@ -89,7 +88,6 @@ def get_down_state_intervals(df, on_state=1, off_state=0) -> Tuple[List[datetime
             else:
                 warnings.warn(f"Found trip start with previous start still in memory.  Date: {df.iloc[i, 0]}, "
                               f"{df.columns[1]}: {df.iloc[i, 1]}")
-                print(df.iloc[i-2:i+2, :])
                 s = None
                 e = None
         elif df.iloc[i, 1] == on_state:
@@ -179,40 +177,56 @@ def get_combined_down_state_intervals(pvs: List[str], begin: datetime, end: date
 
 
 def get_rf_trip_intervals(begin: datetime, end: datetime):
-    """This queries data on the RF trip count and beam presence in the halls to generate RF-involved trip intervals.
+    """This queries data on the NL RF trip count and beam presence in the halls to generate RF-involved trip intervals.
 
     This is currently left in the application code as an example of how the functionality of the of trips package could
     be used.
     """
     # fsd_master_pv = "ISD0I011G"
-    rf_trip_pv = 'FSDTRIPRFCNT'
-    hall_pvs = ['HLA:bta_bm_present', 'HLB:bta_bm_present', 'HLC:bta_bm_present', 'HLD:bta_bm_present']
+    rf_trip_pv = 'FSDTRIPRFNLCNT'
+    # hall_pvs = ['HLA:bta_bm_present', 'HLB:bta_bm_present', 'HLC:bta_bm_present', 'HLD:bta_bm_present']
+
+    # The BPMs have a flag for beam presence.  Beam Not Sensed Flag (BNSF).  0 => present, 1 => not present
+    beam_present_pv = 'IPM1A01.BNSF'
+
+    # This includes daylight savings change over.  Just drop those from consideration to make this easier.
+    overlap_start = datetime.strptime("2021-11-07 01:00:00", "%Y-%m-%d %H:%M:%S")
+    overlap_end = datetime.strptime("2021-11-07 02:00:00", "%Y-%m-%d %H:%M:%S")
 
     # Find the trips as seen by each hall
-    hall_trip_df = get_combined_down_state_intervals(pvs=hall_pvs, begin=begin, end=end, on_state=1, off_state=0,
-                                                     max_duration=300)
+    # hall_trip_df = get_combined_down_state_intervals(pvs=hall_pvs, begin=begin, end=end, on_state=1, off_state=0,
+    #                                                  max_duration=300)
+
+    # Find the start and end times of beam trips
+    beam_present_df = myData(MyDataQuery(begin=begin, end=end, pvlist=[beam_present_pv]))
+    beam_present_df.iloc[:, 1] = pd.to_numeric(beam_present_df.iloc[:, 1], errors='coerce')
+    beam_present_df = beam_present_df[ (beam_present_df.Date > overlap_end) | (beam_present_df.Date < overlap_start)]
+    beam_present_df = beam_present_df.reset_index(drop=True)
+
+    beam_starts, beam_ends = get_down_state_intervals(beam_present_df, on_state=0, off_state=2)
+    beam_trip_df = pd.DataFrame({'pv': [beam_present_pv] * len(beam_starts), 'start': beam_starts, 'end': beam_ends})
+    # Exclude scenarios where the beam stayed off for more than an 5 minutes.  Those aren't "trips"
+    beam_trip_df = beam_trip_df[beam_trip_df.apply(lambda x: (x.end - x.start).total_seconds(), axis=1) < 300]
+    beam_trip_df = beam_trip_df.reset_index(drop=True)
 
     # This is a count of the number of RF trips in recent history.  I'm a little hazy on the details.
     # We just want to know if an RF trip happened somewhere in CEBAF that caused beam to trip off.
     rf_trip_df = myData(MyDataQuery(begin=begin, end=end, pvlist=[rf_trip_pv]))
     rf_trip_df.iloc[:, 1] = pd.to_numeric(rf_trip_df.iloc[:, 1], errors='coerce')
     rf_trip_df.loc[rf_trip_df[rf_trip_pv] > 0, rf_trip_pv] = 1
-
-    # This includes daylight savings change over.  Just drop those from consideration to make this easier.
-    overlap_start = datetime.strptime("2021-11-07 01:00:00", "%Y-%m-%d %H:%M:%S")
-    overlap_end = datetime.strptime("2021-11-07 01:00:00", "%Y-%m-%d %H:%M:%S")
-    rf_trip_df = rf_trip_df[(rf_trip_df.Date > overlap_end) | (rf_trip_df.Date < overlap_start)]
+    rf_trip_df = rf_trip_df[(rf_trip_df.Date > overlap_end) | (rf_trip_df.Date < overlap_start)].reset_index(drop=True)
 
     rf_trip_df = remove_repeat_values(rf_trip_df, values_col=rf_trip_pv)
     starts, ends = get_down_state_intervals(rf_trip_df, on_state=0, off_state=1)
     rf_trip_df = pd.DataFrame({'pv': [rf_trip_pv] * len(starts), 'start': starts, 'end': ends})
 
     # This tells us which trips as seen by the halls were caused by RF
-    hall_intervals = hall_trip_df.apply(lambda x: pd.Interval(x.start, x.end, closed='left'), axis=1)
+    beam_trip_intervals = beam_trip_df.apply(lambda x: pd.Interval(x.start, x.end, closed='left'), axis=1)
+    # hall_intervals = hall_trip_df.apply(lambda x: pd.Interval(x.start, x.end, closed='left'), axis=1)
     rf_intervals = rf_trip_df.apply(lambda x: pd.Interval(x.start, x.end, closed='left'), axis=1)
-    rf_caused = interval_overlap_any(hall_intervals, rf_intervals)
+    rf_caused = interval_overlap_any(beam_trip_intervals, rf_intervals)
 
-    return hall_trip_df[rf_caused].reset_index(drop=True)
+    return beam_trip_df[rf_caused].reset_index(drop=True)
 
 
 def get_mya_samples_from_trips(trip_df: pd.DataFrame, data_file: str = None, max_workers: Optional[int] = None):
