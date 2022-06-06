@@ -14,6 +14,12 @@ class MyDataQuery(Query):
         self.end = end.replace(microsecond=0).isoformat().replace("T", " ")
         self.pv_list = pvlist
 
+    @staticmethod
+    def from_config(begin: str, end: str, pvlist: List[str]):
+        return MyDataQuery(begin=datetime.strptime(begin, "%Y-%m-%d %H:%M:%S"),
+                           end=datetime.strptime(end, "%Y-%m-%d %H:%M:%S"),
+                           pvlist=pvlist)
+
 
 # noinspection PyPep8Naming
 def myData(query: MyDataQuery, mydata_cmd: str = '/usr/csite/certified/bin/myData') -> pd.DataFrame:

@@ -18,6 +18,12 @@ class MySamplerQuery(Query):
         self.num_samples = num_samples
         self.pvlist = pvlist
 
+    @staticmethod
+    def from_config(start: str, interval: str, num_samples: str, pvlist: List[str]):
+        return MySamplerQuery(start=datetime.strptime(start, "%Y-%m-%d %H:%M:%S"),
+                              interval=interval,
+                              num_samples=int(num_samples),
+                              pvlist=pvlist)
 
 # noinspection PyPep8Naming
 def mySampler(query: MySamplerQuery, mysampler_cmd: str = '/usr/csite/certified/bin/mySampler') -> pd.DataFrame:
