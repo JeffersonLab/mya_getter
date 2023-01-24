@@ -260,3 +260,17 @@ def get_mya_samples_from_trips(trip_df: pd.DataFrame, data_file: str = None, max
         data_df.to_csv(data_file)
 
     return data_df
+
+
+def get_trip_subsets(trip_df: pd.DataFrame, rf_zones: List[str] = ('R1M', 'R1N', 'R1O', 'R1P'),
+                     ndx_zones: List[str] = ('1L22', '1L23', '1L24', '1L25', '1L26', '1L27'),
+                     meta_cols: List[str] = ('level_0', 'Date', 'IBC0R08CRCUR1'), trip_col: str = 'level_0',
+                     trip_threshold: float = 0.1):
+    """Return a subset of data where trips happened in the specifed zones."""
+    gmes_cols = [f"{z}{c}GMES" for z in rf_zones for c in range(1, 9)]
+    ndx_cols = [f"INX{z}_{r}DsRt" for z in ndx_zones for r in 'gn']
+
+    has_trip = trip_df.groupby([trip_col])[gmes_cols].apply(lambda x: x.max() - x.min() > trip_threshold).any(axis=1)
+    subset_df = trip_df.copy().set_index(trip_col, drop=False).loc[has_trip, :].reset_index(drop=True)
+
+    return subset_df
