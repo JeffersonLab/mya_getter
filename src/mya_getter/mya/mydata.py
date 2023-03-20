@@ -33,9 +33,11 @@ def myData(query: MyDataQuery, mydata_cmd: str = '/usr/csite/certified/bin/myDat
                  the the start, end, and PV list of the query.  Think deployment.
 """
 
-    args = [mydata_cmd, '-b', query.begin, '-e', query.end, ] + query.pv_list
-    if options is not None:
-        args = args + options
+    args = [mydata_cmd, '-b', query.begin, '-e', query.end]
+    if options is None:
+        args = args + query.pv_list
+    else:
+        args = args + options + query.pv_list
     output = subprocess.run(args=args, check=True, capture_output=True)
     lines = output.stdout.decode('UTF-8').split('\n')
 
