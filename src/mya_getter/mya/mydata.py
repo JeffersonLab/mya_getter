@@ -2,7 +2,7 @@ import pandas as pd
 import subprocess
 from io import StringIO
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 from ._mya import Query
 
 
