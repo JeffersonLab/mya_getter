@@ -10,4 +10,4 @@ source ${DIR}/../venv/bin/activate
 #export PYTHONPATH="${DIR}/../src/:${PYTHONPATH}"
 
 # Run the app passing along all of the args
-python3.7 ${DIR}/../src/mya_getter/main.py "$@"
+python3 ${DIR}/../src/mya_getter/main.py "$@"
