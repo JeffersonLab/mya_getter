@@ -39,18 +39,19 @@ def process_input_file(filename: str):
 
 
 def generate_mysampler_queries(begin: datetime, num_samples: int, interval: str, query_interval: int, num_queries: int,
-                               pvlist: List[str]) -> List[MySamplerQuery]:
+                               pvlist: List[str], **query_kws) -> List[MySamplerQuery]:
     queries = []
     q_int = timedelta(seconds=query_interval)
     for i in range(num_queries):
         start = begin + i * q_int
-        queries.append(MySamplerQuery(start=start, num_samples=num_samples, interval=interval, pvlist=pvlist))
+        queries.append(MySamplerQuery(start=start, num_samples=num_samples, interval=interval, pvlist=pvlist,
+                                      **query_kws))
 
     return queries
 
 
 def generate_mydata_queries(begin: datetime, duration: int, query_interval: int, num_queries: int,
-                            pvlist: List[str], single_pvs: bool) -> List[MyDataQuery]:
+                            pvlist: List[str], single_pvs: bool, **query_kws) -> List[MyDataQuery]:
     queries = []
     q_int = timedelta(seconds=query_interval)
     for i in range(num_queries):
@@ -58,9 +59,9 @@ def generate_mydata_queries(begin: datetime, duration: int, query_interval: int,
         end = start + timedelta(seconds=duration)
         if single_pvs:
             for pv in pvlist:
-                queries.append(MyDataQuery(begin=start, end=end, pvlist=[pv]))
+                queries.append(MyDataQuery(begin=start, end=end, pvlist=[pv], **query_kws))
         else:
-            queries.append(MyDataQuery(begin=start, end=end, pvlist=pvlist))
+            queries.append(MyDataQuery(begin=start, end=end, pvlist=pvlist, **query_kws))
 
     return queries
 
@@ -92,11 +93,12 @@ def main():
                                   help='The number of queries to make, each space --query-interval from the last.',
                                   required=True, type=int)
     mysampler_parser.add_argument('-o', '--output-file', help='File where output is saved', required=True, type=str)
+    mysampler_parser.add_argument('-m', '--mya-deployment', help="MYA deployment to query (e.g. ops, history, etc.)",
+                                  type=str, default=None)
     mysampler_ex = mysampler_parser.add_mutually_exclusive_group(required=True)
     mysampler_ex.add_argument('-p', '--pv-list', nargs='+', type=str, help="Space separated list of PVs to sample")
     mysampler_ex.add_argument('-f', '--pv-file', type=str,
                               help='Path to file containing PVs to sample, one PV per line.')
-
     mydata_parser = subparsers.add_parser('mydata', help='Run myData on a set of queries.')
     mydata_parser.add_argument('-b', '--begin', help="The start time from which all queries are offset",
                                required=True,
@@ -113,6 +115,8 @@ def main():
     mydata_parser.add_argument('-o', '--output-file', help='File where output is saved', required=True, type=str)
     mydata_parser.add_argument('-s', '--single-pvs', help='Should myData make a single query per PV',
                                action='store_true', default=False)
+    mydata_parser.add_argument('-m', '--mya-deployment', help="MYA deployment to query (e.g. ops, history, etc.)",
+                               type=str, default=None)
     mydata_ex = mydata_parser.add_mutually_exclusive_group(required=True)
     mydata_ex.add_argument('-p', '--pv-list', nargs='+', type=str, help="Space separated list of PVs to sample")
     mydata_ex.add_argument('-f', '--pv-file', type=str,
@@ -133,8 +137,10 @@ def main():
         else:
             with open(args.pv_file, mode='r') as f:
                 pvlist = [line.strip() for line in f.readlines()]
-        queries = generate_mysampler_queries(begin=args.begin, num_samples=args.num_samples, interval=args.sample_interval,
-                                             query_interval=args.query_interval, num_queries=args.num_queries, pvlist=pvlist)
+        queries = generate_mysampler_queries(begin=args.begin, num_samples=args.num_samples,
+                                             interval=args.sample_interval, query_interval=args.query_interval,
+                                             num_queries=args.num_queries, pvlist=pvlist,
+                                             deployment=args.mya_deployment)
 
     elif args.cmd == 'mydata':
         cmd = args.cmd
@@ -144,7 +150,8 @@ def main():
             with open(args.pv_file, mode='r') as f:
                 pvlist = [line.strip() for line in f.readlines()]
         queries = generate_mydata_queries(begin=args.begin, duration=args.duration, query_interval=args.query_interval,
-                                          num_queries=args.num_queries, pvlist=pvlist, single_pvs=args.single_pvs)
+                                          num_queries=args.num_queries, pvlist=pvlist, single_pvs=args.single_pvs,
+                                          deployment=args.mya_deployment)
     else:
         raise RuntimeError(f"Unsupported subcommand {args.cmd}")
 
