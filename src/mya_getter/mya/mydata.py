@@ -9,16 +9,24 @@ from ._mya import Query
 class MyDataQuery(Query):
     """A class for containing the arguments needed for a call to myData."""
 
-    def __init__(self, begin: datetime, end: datetime, pvlist: List[str]):
+    def __init__(self, begin: datetime, end: datetime, pvlist: List[str],
+                 filter: Optional[str] = None, ignore_undef: bool = False,
+                 time_precision: Optional[int] = None,
+                 deployment: Optional[str] = None):
         self.begin = begin.replace(microsecond=0).isoformat().replace("T", " ")
         self.end = end.replace(microsecond=0).isoformat().replace("T", " ")
         self.pv_list = pvlist
+        self.filter = filter
+        self.ignore_undef = ignore_undef
+        self.time_precision = time_precision
+        self.deployment = deployment
+
 
     @staticmethod
-    def from_config(begin: str, end: str, pvlist: List[str]):
+    def from_config(begin: str, end: str, pvlist: List[str], **kwargs):
         return MyDataQuery(begin=datetime.strptime(begin, "%Y-%m-%d %H:%M:%S"),
                            end=datetime.strptime(end, "%Y-%m-%d %H:%M:%S"),
-                           pvlist=pvlist)
+                           pvlist=pvlist, **kwargs)
 
 
 # noinspection PyPep8Naming
@@ -34,6 +42,18 @@ def myData(query: MyDataQuery, mydata_cmd: str = '/usr/csite/certified/bin/myDat
 """
 
     args = [mydata_cmd, '-b', query.begin, '-e', query.end]
+    if query.filter is not None:
+        args.append("-f")
+        args.append(query.filter)
+    if query.ignore_undef:
+        args.append("-i")
+    if query.time_precision is not None:
+        args.append("-p")
+        args.append(f"{query.time_precision}")
+    if query.deployment is not None:
+        args.append("-m")
+        args.append(query.deployment)
+        
     if options is None:
         args = args + query.pv_list
     else:
