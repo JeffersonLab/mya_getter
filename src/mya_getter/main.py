@@ -120,6 +120,9 @@ def main():
 
     subparsers.required = True
     args = parser.parse_args()
+    if args.num_queries < 1:
+        print("Error: number of queries must be at least 1")
+        exit(1)
 
     if args.cmd == 'config':
         cmd, queries = process_input_file(args.file)
