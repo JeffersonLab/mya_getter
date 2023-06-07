@@ -1,6 +1,6 @@
 import re
 import io
-from typing import List
+from typing import List, Optional
 
 from datetime import datetime
 import pandas as pd
@@ -12,21 +12,24 @@ from ._mya import Query
 class MySamplerQuery(Query):
     """A class for containing the arguments needed by mySampler."""
 
-    def __init__(self, start: datetime, interval: str, num_samples: int, pvlist: List[str]):
+    def __init__(self, start: datetime, interval: str, num_samples: int, pvlist: List[str],
+                  deployment: Optional[str] = None):
         self.start = start.replace(microsecond=0).isoformat().replace("T", " ")
         self.interval = interval
         self.num_samples = num_samples
         self.pvlist = pvlist
+        self.deployment = deployment
 
     @staticmethod
-    def from_config(start: str, interval: str, num_samples: str, pvlist: List[str]):
+    def from_config(start: str, interval: str, num_samples: str, pvlist: List[str], **kwargs):
         return MySamplerQuery(start=datetime.strptime(start, "%Y-%m-%d %H:%M:%S"),
                               interval=interval,
                               num_samples=int(num_samples),
-                              pvlist=pvlist)
+                              pvlist=pvlist, **kwargs)
 
 # noinspection PyPep8Naming
-def mySampler(query: MySamplerQuery, mysampler_cmd: str = '/usr/csite/certified/bin/mySampler') -> pd.DataFrame:
+def mySampler(query: MySamplerQuery, mysampler_cmd: str = '/usr/csite/certified/bin/mySampler',
+              options: Optional[List[str]] = None) -> pd.DataFrame:
     """Run mySampler with the specified arguments and return a single row DataFrame.
 
     The results for each PV is saved as a column with of tuples.  The tuples contain the individual samples in order.
@@ -40,7 +43,15 @@ def mySampler(query: MySamplerQuery, mysampler_cmd: str = '/usr/csite/certified/
     """
 
     # Run the mySampler command to get samples at 1s intervals
-    args = [mysampler_cmd, '-b', query.start, '-s', query.interval, '-n', str(query.num_samples)] + query.pvlist
+    args = [mysampler_cmd, '-b', query.start, '-s', query.interval, '-n', str(query.num_samples)]
+    if query.deployment is not None:
+        args.append('-m')
+        args.append(query.deployment)
+
+    if options is not None:
+        args = args + options
+    args = args + query.pvlist
+
     logging.info(f"Starting {args[:7]} + {query.pvlist[0]}, ... ({len(query.pvlist)} PVs)")
     output = subprocess.run(args=args, check=True, capture_output=True)
     logging.info(f"Finished {args[:7]} + {query.pvlist[0]}, ... ({len(query.pvlist)} PVs)")
