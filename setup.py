@@ -36,6 +36,7 @@ setup(
     install_requires=[
         'tqdm',
         'pandas',
+        'requests',
     ],
     extra_requires={
         'interactive': ['matplotlib']
