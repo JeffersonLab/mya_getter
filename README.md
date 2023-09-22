@@ -4,7 +4,8 @@ A python wrapper package on MYA utilities.
 
 ## Overview 
 A light wrapper on common MYA utilities used at CEBAF.  These wrapped utilities are currently command line executables,
-however, this software offers easy parallelization through the use of process pools.
+however, this software offers easy parallelization through the use of process pools.  This software also wraps some
+limited functionality of the myquery web-API including mysampler.
 
 Supported utilities are mySampler and myData.  These applications must be installed on your local system for
 this package to be of much use.
