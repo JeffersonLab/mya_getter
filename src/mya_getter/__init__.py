@@ -7,4 +7,4 @@ from .trips import (
     get_combined_down_state_intervals
 )
 
-__version__ = '0.4.0'
+__version__ = '0.5.0'
