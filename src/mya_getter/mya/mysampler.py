@@ -95,7 +95,7 @@ def mySamplerWeb(query: MySamplerQuery, mysampler_url: str = "https://epicsweb.j
     r = requests.get(mysampler_url, params=opts)
     
     if r.status_code != 200:
-        raise requests.RequestException("Error contacting server. status={r.status_code}")
+        raise requests.RequestException(f"Error contacting server. status={r.status_code}")
 
     channels = r.json()['channels']
     samples = {'Date': []}
