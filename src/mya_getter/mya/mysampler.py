@@ -90,7 +90,6 @@ def mySamplerWeb(query: MySamplerQuery, mysampler_url: str = "https://epicsweb.j
     if options is not None:
         opts = options
         for key in q_opts.keys():
-            print(key)
             opts[key] = q_opts[key]
 
     r = requests.get(mysampler_url, params=opts)
