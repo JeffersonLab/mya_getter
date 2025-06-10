@@ -107,7 +107,7 @@ def mySamplerWeb(query: MySamplerQuery, mysampler_url: str = "https://epicsweb.j
         v = []
         for sample in channels[channel]['data']:
             # Grab only one datetime series
-            if idx == 1:
+            if idx == 0:
                 samples['Date'].append(sample['d'])
 
             if 't' in sample.keys():
