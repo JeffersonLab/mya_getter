@@ -1,4 +1,6 @@
+import concurrent
 import re
+from concurrent.futures import ThreadPoolExecutor
 from typing import List, Optional, Dict, Tuple
 from datetime import datetime
 import json
@@ -8,6 +10,22 @@ import pandas as pd
 import numpy as np
 
 from ._mya import Query
+
+
+class MyqueryException(Exception):
+    """Exception representing an error while processing a myquery request or response."""
+
+    def __init__(self, message: str) -> None:
+        """Construct an instance of MyqueryException.
+
+        Args:
+            message: Description of exception cause
+"""
+        self.message = message
+        super().__init__(message)
+
+    def __str__(self) -> str:
+        return self.message
 
 
 class IntervalQuery(Query):
@@ -128,7 +146,7 @@ class MySamplerQuery(Query):
                               interval=int(interval),
                               num_samples=int(num_samples),
                               pvlist=pvlist, **kwargs)
-    
+
     def to_web_params(self) -> Dict[str, str]:
         """Convert the objects command line parameters to their web counter parts"""
         out = {}
@@ -183,7 +201,6 @@ class Interval:
             RequestException when a problem making the query has occurred            
         """
 
-        # Combine the two sources of options.  query object takes precendent
         opts =  self.query.to_web_params()
         r = requests.get(self.url, params=opts)
         
@@ -221,6 +238,98 @@ class Interval:
         self.data = data
         self.disconnects = disconnects
         self.metadata = metadata
+
+    @staticmethod
+    def create_queries() -> List[IntervalQuery]:
+        """Create a list of IntervalQueries, one per PV, with otherwise identical parameters.
+
+        See IntervalQuery for required parameters.
+        """
+
+    @staticmethod
+    def run_parallel(pvlist: List[str], max_workers: int = 4,  **kwargs) -> Tuple[pd.DataFrame, Dict[str, pd.Series], dict]:
+        """Run multiple IntervalQueries in parallel.  The web endpoint does not support multiple PVs in a single query.
+
+        All queries will have the same options other than channel, which is pulled from pvlist.  prior_point is forced
+        to True to ensure that we can intelligently fill NaN values from merging the disparate time stamps.
+
+        Args:
+            pvlist: A list of PVs to queries
+            max_workers: The maximum number of concurrent queries to run in parallel.
+
+        Returns:
+            A Pandas DataFrame of the combined PVs, a dictionry of per-channel disconnect series (keyed on channels),
+            and a dictionary of per-channel metadata (keyed on channel)
+        """
+        if "channel" in kwargs.keys():
+            del kwargs["channel"]
+        kwargs["prior_point"] = True
+
+        queries = []
+        for pv in pvlist:
+            queries.append(IntervalQuery(pv, **kwargs))
+
+        out = {}
+
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = []
+            for query in queries:
+                out[query.channel] = Interval(query)
+                futures.append(executor.submit(out[query.channel].run))
+
+            # The futures won't hold results, only the status of the jobs.  Look at out for future.
+            done, not_done = concurrent.futures.wait(futures, return_when=concurrent.futures.ALL_COMPLETED)
+
+        if len(not_done) > 0:
+            raise MyqueryException("Some PV queries did not complete.")
+
+        data = Interval._combine_series([out[channel].data for channel in out.keys()])
+        disconnects = {channel: out[channel].disconnects for channel in out.keys()}
+        metadata = {channel: out[channel].metadata for channel in out.keys()}
+
+        return data, disconnects, metadata
+
+    @staticmethod
+    def _combine_series(series: List[pd.Series]) -> pd.DataFrame:
+        """Combine multiple series of PV history into a single DataFrame with shared DateTime Index.
+
+        The series are concat'ed together and sorted so that rows appear in chronological order.  Missing values are
+        forward filled, but NaNs in the original data are preserved and forward filled as well.  The names of the
+        Series are used as column names in the resulting DataFrame.
+
+        Note: Series are assumed to have a DateTime index.
+
+        Args:
+            series: A list of Series objects to combine
+
+        Return:
+            A DataFrame of the combined Series objects.
+        """
+        df = pd.concat(series, axis=1).sort_index().ffill()
+
+        for s in series:
+            # Find where there is non-update values (None/NaN)
+            nan_mask = s.isnull()
+
+            # Add back any missing NaNs from the original data
+            if sum(nan_mask) > 0:
+                # This identifies all the timestamps following an NaN.  If the last value is NaN, then the following
+                # timestamp will be pd.NaT (not a time)
+                next_ts = s.index.to_series().shift(-1)
+
+                # For each row, check if it was originally an NaN, then add back in the NaNs.
+                for idx, is_true in nan_mask.items():
+                    if is_true:
+                        # idx is the last row so we go to the end
+                        if next_ts[idx] is pd.NaT:
+                            df.loc[df.index >= idx, s.name] = np.nan
+                        else:
+                            # Fill in any value between "here" and the next "real" update.
+                            df.loc[(df.index >= idx) & (df.index < next_ts[idx]), s.name] = np.nan
+
+        return df
+
+
 
 
 class MySampler:
